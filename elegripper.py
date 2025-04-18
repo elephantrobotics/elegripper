@@ -117,14 +117,14 @@ class Gripper(Command):
         """
         with self.lock:
             send_data = cmd + self.__crc16_modbus(cmd)
-            print(send_data.hex())
+            # print(send_data.hex())
             self.ser.write(send_data)
             self.ser.flush()
             time.sleep(0.04)
             recv_data = self.ser.read(11)
             if not recv_data:
                 raise TimeoutError("Reading data timeout")
-            print(recv_data.hex())
+            # print(recv_data.hex())
             if len(recv_data) == 11:
                 data = recv_data[0:9]
                 crc_data = recv_data[9:]
@@ -149,7 +149,7 @@ class Gripper(Command):
            Response results:0 represents failure, 1 represents success
         """
         if self.check_value(value, 0, 100):
-            if self.check_value(speed, 0, 100, index=2):
+            if self.check_value(speed, 1, 100, index=2):
                 self.set_gripper_speed(speed)
                 self.cmd_list[4] = 6
                 tmp = self.__byte_deal(11, value)
@@ -162,12 +162,12 @@ class Gripper(Command):
         """Setting the gripper speed
 
         Args:
-            value (int): Speed ​​range 0-100
+            value (int): Speed ​​range 1-100
 
         Returns:
             Response results:0 represents failure, 1 represents success
         """
-        if self.check_value(value, 0, 100):
+        if self.check_value(value, 1, 100):
             self.cmd_list[4] = 6
             tmp = self.__byte_deal(32, value)
             for i in range(5, 9):
@@ -307,7 +307,7 @@ class Gripper(Command):
         Returns:
             Response results:0 represents failure, 1 represents success
         """
-        if self.check_value(0, 5):
+        if self.check_value(value, 0, 5):
             self.cmd_list[4] = 6
             tmp = self.__byte_deal(5, value)
             for i in range(5, 9):
@@ -797,3 +797,5 @@ class Gripper(Command):
                 elif value == 0:
                     return self.set_gripper_value(0)
 
+    def close(self):
+        self.ser.close()
