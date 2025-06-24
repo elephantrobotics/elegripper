@@ -298,6 +298,7 @@ class Gripper(Command):
             for i in range(2, 6):
                 self.cmd_list[i] = tmp[i - 2]
             cmd = bytes(self.cmd_list)
+            self.cmd_list[0] = value
             return self.__send_cmd(cmd)
 
     def get_gripper_Id(self):
