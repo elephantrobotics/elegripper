@@ -184,12 +184,12 @@ class Gripper(Command):
         """Setting the gripper speed
 
         Args:
-            value (int): Speed ​​range 0-100
+            value (int): Speed ​​range 1-100
 
         Returns:
             Response results:0 represents failure, 1 represents success
         """
-        if self.check_value(value,0,100):
+        if self.check_value(value,1,100):
             self.cmd_list[1] = 6
             tmp = self.__byte_deal(32, value)
             for i in range(2, 6):
