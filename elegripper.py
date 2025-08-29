@@ -103,7 +103,7 @@ class Gripper(Command):
                     crc >>= 1
         return crc.to_bytes(2, byteorder='big')
 
-    def __send_cmd(self, cmd):
+    def __send_cmd(self, cmd, is_special_interface=False):
         """Processing Messages
 
         Args:
@@ -130,7 +130,10 @@ class Gripper(Command):
                 crc_data = recv_data[9:]
                 if self.__crc16_modbus(data) == crc_data:
                     response = data + crc_data
-                    result = int(response.hex()[14:18], 16)
+                    if is_special_interface:
+                        result = int(response.hex()[14:16], 16)
+                    else:
+                        result = int(response.hex()[14:18], 16)
                     return result
                 else:
                     return -2
@@ -796,6 +799,23 @@ class Gripper(Command):
                     return self.set_gripper_value(100)
                 elif value == 0:
                     return self.set_gripper_value(0)
+
+    def set_gripper_value_return_angle(self, value):
+        """Set the gripper position to a specific angle
+
+        Args:
+            value (int): The value range is 0-100
+
+        Returns:
+            Response results:current angle 0-100
+        """
+        if self.check_value(value, 0, 100):
+            self.cmd_list[4] = 6
+        tmp = self.__byte_deal(46, value)
+        for i in range(5, 9):
+            self.cmd_list[i] = tmp[i - 5]
+        cmd = bytes(self.cmd_list)
+        return self.__send_cmd(cmd,is_special_interface=True)
 
     def close(self):
         self.ser.close()

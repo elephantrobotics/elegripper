@@ -101,7 +101,7 @@ class Gripper(Command):
                     crc >>= 1
         return crc.to_bytes(2, byteorder='little')
 
-    def __send_cmd(self, cmd):
+    def __send_cmd(self, cmd, is_special_interface=False):
         """Processing Messages
 
         Args:
@@ -113,52 +113,33 @@ class Gripper(Command):
         Returns:
             Response Reply,If the data length is incorrect, -1 is returned; if the CRC check is incorrect, -2 is returned.
         """
-        if self.cmd_list[1] == 6:
-            with self.lock:
-                send_data = cmd + self.__crc16_modbus(cmd)
-                # print(send_data.hex())
-                self.ser.write(send_data)
-                self.ser.flush()
-                time.sleep(0.04)
-                recv_data = self.ser.read(8)
-                # print(recv_data)
-                if not recv_data:
-                    raise TimeoutError("Reading data timeout")
-                # print(recv_data.hex())
-                if len(recv_data) == 8:
-                    data = recv_data[0:6]
-                    crc_data = recv_data[6:]
-                    if self.__crc16_modbus(data) == crc_data:
-                        response = data + crc_data
+
+        with self.lock:
+            send_data = cmd + self.__crc16_modbus(cmd)
+            # print(send_data.hex())
+            self.ser.write(send_data)
+            self.ser.flush()
+            # time.sleep(0.04)
+            recv_data = self.ser.read(8)
+            # print(recv_data)
+            if not recv_data:
+                raise TimeoutError("Reading data timeout")
+            # print(recv_data.hex())
+            if len(recv_data) == 8:
+                data = recv_data[0:6]
+                crc_data = recv_data[6:]
+                if self.__crc16_modbus(data) == crc_data:
+                    response = data + crc_data
+                    if is_special_interface:
+                        result = int(response.hex()[8:10], 16)
+                    else:
                         result = int(response.hex()[8:12], 16)
-                        return result
-                    else:
-                        return -2
+                    return result
                 else:
-                    return -1
-        elif self.cmd_list[1] == 3:
-            with self.lock:
-                send_data = cmd + self.__crc16_modbus(cmd)
-                # print(send_data.hex())
-                self.ser.write(send_data)
-                self.ser.flush()
-                time.sleep(0.04)
-                recv_data = self.ser.read(7)
-                # print(recv_data)
-                if not recv_data:
-                    raise TimeoutError("Reading data timeout")
-                # print(recv_data.hex())
-                if len(recv_data) == 7:
-                    data = recv_data[0:5]
-                    crc_data = recv_data[5:]
-                    if self.__crc16_modbus(data) == crc_data:
-                        response = data + crc_data
-                        result = int(response.hex()[6:10], 16)
-                        return result
-                    else:
-                        return -2
-                else:
-                    return -1
+                    return -2
+            else:
+                return -1
+
 
     def set_gripper_value(self, value, speed=100):
         """Setting the gripper position
@@ -819,3 +800,20 @@ class Gripper(Command):
                     return self.set_gripper_value(100)
                 elif value == 0:
                     return self.set_gripper_value(0)
+
+    def set_gripper_value_return_angle(self, value):
+        """Set the gripper position to a specific angle
+
+        Args:
+            value (int): The value range is 0-100
+
+        Returns:
+            Response results:current angle 0-100
+        """
+        if self.check_value(value, 0, 100):
+            self.cmd_list[1] = 6
+        tmp = self.__byte_deal(46, value)
+        for i in range(2, 6):
+            self.cmd_list[i] = tmp[i - 2]
+        cmd = bytes(self.cmd_list)
+        return self.__send_cmd(cmd,is_special_interface=True)
