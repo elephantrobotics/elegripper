@@ -812,8 +812,25 @@ class Gripper(Command):
         """
         if self.check_value(value, 0, 100):
             self.cmd_list[1] = 6
-        tmp = self.__byte_deal(46, value)
-        for i in range(2, 6):
-            self.cmd_list[i] = tmp[i - 2]
-        cmd = bytes(self.cmd_list)
-        return self.__send_cmd(cmd,is_special_interface=True)
+            tmp = self.__byte_deal(46, value)
+            for i in range(2, 6):
+                self.cmd_list[i] = tmp[i - 2]
+            cmd = bytes(self.cmd_list)
+            return self.__send_cmd(cmd,is_special_interface=True)
+
+    def set_modbus(self, value):
+        """Set the gripper clamping current
+
+        Args:
+            value (int): The value range is 100-300
+
+        Returns:
+            Response results:0 represents failure, 1 represents success
+        """
+        if self.check_value(value, 0, 1):
+            self.cmd_list[1] = 6
+            tmp = self.__byte_deal(47, value)
+            for i in range(2, 6):
+                self.cmd_list[i] = tmp[i - 2]
+            cmd = bytes(self.cmd_list)
+            return self.__send_cmd(cmd)

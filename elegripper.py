@@ -817,5 +817,22 @@ class Gripper(Command):
         cmd = bytes(self.cmd_list)
         return self.__send_cmd(cmd,is_special_interface=True)
 
+    def set_modbus(self, value):
+        """Set the gripper modbus
+
+        Args:
+            value (int): The value range is 100-300
+
+        Returns:
+            Response results:0 represents failure, 1 represents success
+        """
+        if self.check_value(value, 0, 1):
+            self.cmd_list[4] = 6
+            tmp = self.__byte_deal(47, value)
+            for i in range(5, 9):
+                self.cmd_list[i] = tmp[i - 5]
+            cmd = bytes(self.cmd_list)
+            return self.__send_cmd(cmd)
+
     def close(self):
         self.ser.close()
