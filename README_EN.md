@@ -1,362 +1,99 @@
-# 1 Serial port library installation
+# Elephant Gripper Python Library
+
+This Python library controls an Elephant Robotics gripper over a serial port.
+`elegripper_modbus.py` uses Modbus RTU framing.
+
+## Installation
+
 ```bash
 pip install pyserial
 ```
 
-# 2 Case run
+## Quick start
 
 ```python
+from elegripper_modbus import Gripper
+
+gripper = Gripper("COM3", baudrate=115200, id=14)
+try:
+    gripper.set_gripper_enable(1)
+    gripper.set_gripper_value(50, speed=80)
+    print(gripper.get_gripper_value())
+finally:
+    gripper.ser.close()
+```
+
+On Linux, replace `COM3` with the device path, such as `/dev/ttyUSB0`.
+
+## Return values and communication errors
+
+Most methods return the integer value from the device. The communication layer
+can also return or raise:
+
+- `-1`: response length is invalid.
+- `-2`: Modbus CRC validation failed.
+- `TimeoutError`: serial read timed out.
+
+Function 03 responses from this device are eight bytes: six data bytes followed
+by two CRC bytes. For example, request `0e030001000014f5` can receive
+`0e030001000e9531`.
+
+## Query methods
+
+| Method | Return value |
+| --- | --- |
+| `get_firmware_version()` | Firmware major version |
+| `get_modified_version()` | Firmware minor version |
+| `get_gripper_Id()` | Gripper ID |
+| `get_gripper_baud()` | Baud-rate index (0–5) |
+| `get_gripper_value()` | Current position (0–100) |
+| `get_gripper_status()` | 0=moving; 1=stopped without an object; 2=stopped with an object; 3=object fell after detection |
+| `get_gripper_speed()` | Current speed (1–100) |
+| `get_gripper_P()` | PID P value (0–254) |
+| `get_gripper_I()` | PID I value (0–254) |
+| `get_gripper_D()` | PID D value (0–254) |
+| `get_gripper_cw()` | Clockwise run error (0–16) |
+| `get_gripper_cww()` | Counter-clockwise run error (0–16) |
+| `get_gripper_mini_pressure()` | Minimum starting pressure (0–254) |
+| `get_gripper_torque()` | Gripper torque (0–300) |
+| `get_gripper_io_open_value()` | IO open position (0–100) |
+| `get_gripper_io_close_value()` | IO close position (0–100) |
+| `get_gripper_queue_count()` | Number of queued commands |
+| `get_gripper_vir_pos()` | Virtual position (0–100) |
+| `get_gripper_protection_current()` | Protection current |
+
+## Configuration and motion methods
+
+| Method | Parameters and behavior |
+| --- | --- |
+| `set_gripper_Id(value)` | ID, `1–254` |
+| `set_gripper_baud(value=0)` | Baud-rate index: 0=115200, 1=1000000, 2=57600, 3=19200, 4=9600, 5=4800 |
+| `set_gripper_enable(value)` | Enable state: 0=disabled, 1=enabled |
+| `set_gripper_value(value, speed=100)` | Position `0–100`; speed `1–100` |
+| `set_gripper_speed(value)` | Speed `0–100` |
+| `set_gripper_calibration()` | Run zero-position calibration |
+| `set_gripper_P(value)` | PID P value, `0–254` |
+| `set_gripper_I(value)` | PID I value, `0–254` |
+| `set_gripper_D(value)` | PID D value, `0–254` |
+| `set_gripper_cw(value)` | Clockwise run error, `0–16` |
+| `set_gripper_cww(value)` | Counter-clockwise run error, `0–16` |
+| `set_gripper_mini_pressure(value)` | Minimum starting pressure, `0–254` |
+| `set_gripper_torque(value)` | Gripper torque, `0–100` |
+| `set_gripper_output(value=0)` | IO output: 0=all off, 1=OUT1 on, 2=OUT2 on, 3=all on |
+| `set_gripper_io_open_value(value)` | IO open position, `0–100` |
+| `set_gripper_io_close_value(value)` | IO close position, `0–100` |
+| `set_abs_gripper_value(value, speed=100)` | Absolute position `0–100`; speed `1–100` |
+| `set_gripper_pause()` | Pause absolute-position movement |
+| `set_gripper_resume()` | Resume absolute-position movement |
+| `set_gripper_stop()` | Stop movement and clear the command cache |
+| `set_gripper_vir_pos(value)` | Set virtual position, `0–100` |
+| `set_gripper_protection_current(value)` | Set protection current, `100–300` |
+| `set_gripper_state(value, speed=100)` | 0=fully closed, 1=fully open; speed `1–100` |
+
+## Example
+
+Run the included example:
+
+```bash
 python demo.py
 ```
-# 3 Interface introduction
-
-## 1. Gripper information query
-
-### get_firmware_version()
-
-- **Function:** Get the main version number of the gripper firmware
-
-- **Parameter:** None
-- **Return:** `(int)` Firmware main version number
-
-### get_modified_version()
-
-- **Function:** Get the sub-version number of the gripper firmware
-
-- **Parameter:** None
-- **Return:** `(int)` Firmware sub-version number
-
-### get_gripper_Id()
-
-- **Function:** Get the gripper ID
-
-- **Parameter:** None
-- **Return:** `(int)` Gripper ID
-
-### get_gripper_baud()
-
-- **Function:** Get the baud rate of the gripper
-
-- **Parameter:** None
-- **Return:**`(int)` 0-5
-  - `0`: 115200
-  - `1`: 1000000
-  - `2`: 57600
-  - `3`: 19200
-  - `4`: 9600
-  - `5`: 4800
-
-### get_gripper_value()
-
-- **Function:** Get the current position data of the gripper
-- **Parameter:** None
-- **Return:** `(int)` The current position data of the gripper
-
-### get_gripper_status()
-
-- **Function:** Get the current status of the gripper
-- **Parameter:** None
-- **Return:**`(int)` 0-3
-  - `0`: Moving
-  - `1`: Stopped moving, no object was detected
-  - `2`: Stopped moving, object was detected
-  - `3`: After detecting that the object is clamped, the object falls
-
-### get_gripper_speed()
-
-- **Function:** Get the current speed of the gripper
-
-- **Parameter:** None
-
-- **Return:** `(int)` The current speed of the gripper
-
-### get_gripper_P()
-
-- **Function:** Get the P value of the gripper PID
-
-- **Parameter:** None
-
-- **Return:** `(int)` The P value of the gripper PID
-
-### get_gripper_I()
-
-- **Function:** Get the I value of the gripper PID
-
-- **Parameter:** None
-
-- **Return:** `(int)` The I value of the gripper PID
-
-### get_gripper_D()
-
-- **Function:** Get the D value of the gripper PID
-
-- **Parameter:** None
-
-- **Return:** `(int)` The D value of the gripper PID
-
-### get_gripper_cw()
-
-- **Function:** Get the clockwise runnable error of the gripper
-- **Parameter:** None
-- **Return:** `(int)` Clockwise runnable error of the gripper
-
-### get_gripper_cww()
-
-- **Function:** Get the counterclockwise runnable error of the gripper
-- **Parameter:** None
-- **Return:** `(int)` Counterclockwise runnable error of the gripper
-
-### get_gripper_mini_pressure()
-
-- **Function:** Get the minimum starting force of the gripper
-- **Parameter:** None
-- **Return:** `(int)` Minimum starting force of the gripper
-
-### get_gripper_io_open_value()
-
-- **Function:** Get the opening angle of the gripper Io
-- **Parameter:** None
-- **Return:** `(int)` Opening angle of the gripper Io
-
-### get_gripper_io_close_value()
-
-- **Function:** Get the closing angle of the gripper Io
-- **Parameter:** None
-- **Return:** `(int)` Get the closing angle of the gripper Io
-
-### get_gripper_queue_count()
-
-- **Function:** Get the amount of data in the current queue of the gripper
-
-- **Parameter:** None
-- **Return:** `(int)` The amount of data in the current queue of the gripper
-
-### get_gripper_vir_pos()
-
-- **Function:** Get the virtual position value of the gripper servo
-
-- **Parameter:** None
-- **Return:** `(int)` The virtual position value of the gripper servo
-
-### get_gripper_protection_current()
-
-- **Function:** Get the gripper clamping current
-
-- **Parameter:** None
-- **Return:** `(int)` The gripper clamping current
-## 2 Gripper settings
-
-### set_gripper_Id(value)
-
-- **Function:** Set the gripper ID
-- **Parameters:**
-  - `value`: `(int)` Gripper ID, value range `1-254`
-- **Return:** `(int)` 0-1
-  - `0`: Failed
-  - `1`: Success
-
-### set_gripper_baud(value)
-
-- **Function:** Set the gripper baud rate
-- **Parameter:**
-  - `value`: `(int)` Gripper baud rate, value range `0-5`
-    - `0`: 115200
-    - `1`: 1000000
-    - `2`: 57600
-    - `3`: 19200
-    - `4`: 9600
-    - `5`: 4800
-- **Return:** `(int)` 0-1
-  - `0`: Failed
-  - `1`: Successful
-
-### set_gripper_enable(value)
-
-- **Function:** Set the gripper enable state
-- **Parameter:**
-- `value`: `(int)` Enable state, value range `0-1`
-  - `0`: Disabled
-  - `1`: Enabled
-- **Return:**`(int)` 0-1
-  - `0`: Failed
-  - `1`: Success
-
-### set_gripper_value(value,speed)
-
-- **Function:** Set the gripper to rotate to the specified position at the specified speed
-- **Parameter:**
-  - `value`: `(int)` Position, value range `0-100`
-  - `speed`: `(int)` Speed, value range `1-100`
-- **Return:**`(int)` 0-1
-  - `0`: Failed
-  - `1`: Success
-
-### set_gripper_calibration()
-
-- **Function:** Set the gripper Zero Calibration
-- **Parameter:** None
-- **Return:**`(int)` 0-1
-  - `0`: Failed
-  - `1`: Success
-
-### set_gripper_P(value)
-
-- **Function:** Set the P value of the gripper PID
-- **Parameters:**
-  - `value`: `(int)` P value, value range `0-254`
-- **Return:** `(int)` 0-1
-  - `0`: Failed
-  - `1`: Success
-
-### set_gripper_I(value)
-
-- **Function:** Set the I value of the gripper PID
-- **Parameters:**
-  - `value`: `(int)` I value, value range `0-254`
-- **Return:** `(int)` 0-1
-  - `0`: Failed
-  - `1`: Success
-
-### set_gripper_D(value)
-
-- **Function:** Set the D value of the gripper PID
-- **Parameters:**
-  - `value`: `(int)` D value, value range `0-254`
-- **Return:** `(int)` 0-1
-  - `0`: Failed
-  - `1`: Success
-
-### set_gripper_cw(value)
-
-- **Function:** Set the clockwise running error of the gripper
-
-- **Parameter:**
-  - `value`: `(int)` Error, value range `0-16`
-- **Return:** `(int)` 0-1
-  - `0`: Failure
-  - `1`: Success
-
-### set_gripper_cww(value)
-
-- **Function:** Set the counterclockwise running error of the gripper
-
-- **Parameter:**
-  - `value`: `(int)` Error, value range `0-16`
-- **Return:** `(int)` 0-1
-  - `0`: Failure
-  - `1`: Success
-
-### set_gripper_mini_pressure(value)
-
-- **Function:** Set the minimum starting force of the gripper
-- **Parameter:**
-  - `value`: `(int)` Minimum starting force, value range `0-254`
-- **Return:**`(int)` 0-1
-  - `0`: Failed
-  - `1`: Success
-
-### set_gripper_torque(value)
-
-- **Function:** Set gripper torque
-- **Parameter:**
-  - `value`: `(int)` Torque, value range `0-300`
-- **Return:**`(int)` 0-1
-  - `0`: Failed
-  - `1`: Success
-
-### set_gripper_output(value)
-
-- **Function:** Set gripper IO
-- **Parameter:**
-  - `value`: `(int)` Gripper IO, value range `0-3`
-    - `0`: out1 off,out2 off
-    - `1`: out1 on,out2 off
-    - `2`: out1 off,out2 on
-    - `3`: out1 on,out2 on
-
-- **Return:**`(int)` 0-1
-  - `0`: Failed
-  - `1`: Success
-
-### set_gripper_io_open_value(value)
-
-- **Function:** Set the gripper Io open position
-- **Parameter:**
-  - `value`: `(int)` position, value range `0-100`
-- **Return:**`(int)` 0-1
-  - `0`: Failed
-  - `1`: Success
-
-### set_gripper_io_close_value(value)
-
-- **Function:** Set the gripper Io closed position
-- **Parameter:**
-  - `value`: `(int)` position, value range `0-100`
-- **Return:**`(int)` 0-1
-  - `0`: Failed
-  - `1`: Success
-
-### set_gripper_speed(speed)
-
-- **Function:** Set the gripper speed
-- **Parameters:**
-  - `speed`: `(int)` speed, value range `1-100`
-- **Return:** `(int)` 0-1
-  - `0`: failed
-  - `1`: successful
-
-### set_abs_gripper_value(value,speed)
-
-- **Function:** Set the gripper to rotate to the specified absolute position at the specified speed
-- **Parameters:**
-- `value`: `(int)` position, value range `1-100`
-- `speed`: `(int)` speed, value range `1-100`
-- **Return:** `(int)` 0-1
-  - `0`: failed
-  - `1`: successful
-
-### set_gripper_vir_pos(value)
-
-- **Function:** Set the virtual position value of the gripper servo
-- **Parameters:**
-  - `value`: `(int)` virtual position, value range `0-100`
-- **Return:**`(int)` 0-1
-  - `0`: Failed
-  - `1`: Success
-
-### set_gripper_protection_current(value)
-
-- **Function:** Set the gripper gripping current
-- **Parameter:**
-  - `value`: `(int)` Virtual position, value range `1-254`
-- **Return:**`(int)` 0-1
-  - `0`: Failed
-  - `1`: Success
-
-### set_gripper_pause()
-
-- **Function:** Set the gripper to pause motion
-- **Remarks:** Only valid for set_abs_gripper_value()
-- **Parameter:** None
-- **Return:**`(int)` 0-1
-  - `0`: Failed
-  - `1`: Success
-
-### set_gripper_resume()
-
-- **Function:** Set the gripper to resume motion
-- **Remarks:** Only valid for set_abs_gripper_value()
-- **Parameters:** None
-- **Return:** `(int)` 0-1
-  - `0`: Failure
-  - `1`: Success
-
-### set_gripper_stop()
-
-- **Function:** Set the gripper to stop moving and clear the message queue
-- **Remarks:** Only valid for set_abs_gripper_value()
-- **Parameters:** None
-- **Return:** `(int)` 0-1
-  - `0`: Failure
-  - `1`: Success
-

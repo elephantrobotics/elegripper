@@ -1,347 +1,97 @@
-# 1 串口库安装
+# Elephant Gripper Python 库
+
+通过串口控制 Elephant Robotics 夹爪的 Python 接口。`elegripper_modbus.py`
+使用 Modbus RTU 帧格式。
+
+## 安装
+
 ```bash
 pip install pyserial
 ```
 
-# 2 案例运行
+## 快速开始
 
 ```python
+from elegripper_modbus import Gripper
+
+gripper = Gripper("COM3", baudrate=115200, id=14)
+try:
+    gripper.set_gripper_enable(1)
+    gripper.set_gripper_value(50, speed=80)
+    print(gripper.get_gripper_value())
+finally:
+    gripper.ser.close()
+```
+
+Linux 请将 `COM3` 替换为对应设备路径，例如 `/dev/ttyUSB0`。
+
+## 返回值与通信错误
+
+多数接口返回设备回传的整数值。通信层还会返回或抛出以下结果：
+
+- `-1`：收到的响应长度不正确。
+- `-2`：Modbus CRC 校验失败。
+- `TimeoutError`：串口读取超时。
+
+Function 03 的本设备响应为 8 字节：6 字节数据和 2 字节 CRC。例如请求
+`0e030001000014f5` 的响应可为 `0e030001000e9531`。
+
+## 查询接口
+
+| 接口 | 返回值 |
+| --- | --- |
+| `get_firmware_version()` | 固件主版本号 |
+| `get_modified_version()` | 固件次版本号 |
+| `get_gripper_Id()` | 夹爪 ID |
+| `get_gripper_baud()` | 波特率索引（0–5） |
+| `get_gripper_value()` | 当前开合位置（0–100） |
+| `get_gripper_status()` | 状态：0 运动中；1 停止未夹到物体；2 已夹到物体；3 夹取后物体掉落 |
+| `get_gripper_speed()` | 当前速度（1–100） |
+| `get_gripper_P()` | PID P 值（0–254） |
+| `get_gripper_I()` | PID I 值（0–254） |
+| `get_gripper_D()` | PID D 值（0–254） |
+| `get_gripper_cw()` | 顺时针运行误差（0–16） |
+| `get_gripper_cww()` | 逆时针运行误差（0–16） |
+| `get_gripper_mini_pressure()` | 最小启动压力（0–254） |
+| `get_gripper_torque()` | 夹爪扭矩（0–300） |
+| `get_gripper_io_open_value()` | IO 打开位置（0–100） |
+| `get_gripper_io_close_value()` | IO 关闭位置（0–100） |
+| `get_gripper_queue_count()` | 当前命令队列数量 |
+| `get_gripper_vir_pos()` | 虚拟位置（0–100） |
+| `get_gripper_protection_current()` | 保护电流 |
+
+## 配置与运动接口
+
+| 接口 | 参数与说明 |
+| --- | --- |
+| `set_gripper_Id(value)` | ID，`1–254` |
+| `set_gripper_baud(value=0)` | 波特率索引：0=115200、1=1000000、2=57600、3=19200、4=9600、5=4800 |
+| `set_gripper_enable(value)` | 使能：0 禁用，1 启用 |
+| `set_gripper_value(value, speed=100)` | 目标开合位置 `0–100`；速度 `1–100` |
+| `set_gripper_speed(value)` | 速度 `0–100` |
+| `set_gripper_calibration()` | 执行零位校准 |
+| `set_gripper_P(value)` | PID P 值，`0–254` |
+| `set_gripper_I(value)` | PID I 值，`0–254` |
+| `set_gripper_D(value)` | PID D 值，`0–254` |
+| `set_gripper_cw(value)` | 顺时针运行误差，`0–16` |
+| `set_gripper_cww(value)` | 逆时针运行误差，`0–16` |
+| `set_gripper_mini_pressure(value)` | 最小启动压力，`0–254` |
+| `set_gripper_torque(value)` | 夹爪扭矩，`0–100` |
+| `set_gripper_output(value=0)` | IO 输出：0=全关、1=OUT1 开、2=OUT2 开、3=全开 |
+| `set_gripper_io_open_value(value)` | IO 打开位置，`0–100` |
+| `set_gripper_io_close_value(value)` | IO 关闭位置，`0–100` |
+| `set_abs_gripper_value(value, speed=100)` | 绝对位置 `0–100`；速度 `1–100` |
+| `set_gripper_pause()` | 暂停绝对位置运动 |
+| `set_gripper_resume()` | 恢复绝对位置运动 |
+| `set_gripper_stop()` | 停止运动并清空命令缓存 |
+| `set_gripper_vir_pos(value)` | 设置虚拟位置，`0–100` |
+| `set_gripper_protection_current(value)` | 设置保护电流，`100–300` |
+| `set_gripper_state(value, speed=100)` | 0 全闭合，1 全打开；速度 `1–100` |
+
+## 示例
+
+运行仓库中的示例：
+
+```bash
 python demo.py
 ```
-# 3 接口介绍
-
-## 1. 夹爪信息查询
-
-### get_firmware_version()
-
-- **功能:** 获取夹爪固件主版本号
-- **参数:** 无
-- **返回:** `(int)`固件主版本号
-
-### get_modified_version()
-
-- **功能:** 获取夹爪固件次版本号
-- **参数:** 无
-- **返回:** `(int)`固件次版本号
-
-### get_gripper_Id()
-
-- **功能:** 获取夹爪ID
-- **参数:** 无
-- **返回:** `(int)`夹爪ID
-
-
-### get_gripper_baud()
-
-- **功能:** 获取夹爪波特率
-- **参数:** 无
-- **返回:**`(int)` 0-5
-    - `0`: 115200
-    - `1`: 1000000
-    - `2`: 57600
-    - `3`: 19200
-    - `4`: 9600
-    - `5`: 4800
-
-### get_gripper_value()
-
-- **功能:** 获取夹爪的当前位置数据信息
-- **参数:** 无
-- **返回:** `(int)`夹爪的当前位置数据
-
-### get_gripper_status()
-
-- **功能:** 获取夹爪的当前状态
-- **参数:** 无
-- **返回:**`(int)` 0-3
-    - `0`:  正在运动
-    - `1`: 停止运动，未检测到夹到物体
-    - `2`: 停止运动，检测到夹到了物体
-    - `3`: 检测到夹到物体以后，物体掉落
-
-### get_gripper_speed()
-
-- **功能:** 获取夹爪的当前速度
-- **参数:** 无
-- **返回:** `(int)`夹爪的当前速度
-
-### get_gripper_P()
-
-- **功能:** 获取夹爪PID的P值
-- **参数:** 无
-- **返回:** `(int)`夹爪PID的P值
-
-### get_gripper_I()
-
-- **功能:** 获取夹爪PID的I值
-- **参数:** 无
-- **返回:** `(int)`夹爪PID的I值
-
-### get_gripper_D()
-
-- **功能:** 获取夹爪PID的D值
-- **参数:** 无
-- **返回:** `(int)`夹爪PID的D值
-
-### get_gripper_cw()
-
-- **功能:** 获取夹爪顺时针可运行误差
-- **参数:** 无
-- **返回:** `(int)`夹爪顺时针可运行误差
-
-### get_gripper_cww()
-
-- **功能:** 获取夹爪逆时针可运行误差
-- **参数:** 无
-- **返回:** `(int)`夹爪逆时针可运行误差
-
-### get_gripper_mini_pressure()
-
-- **功能:** 获取夹爪最小启动力
-- **参数:** 无
-- **返回:** `(int)`夹爪最小启动力
-
-### get_gripper_io_open_value()
-
-- **功能:** 获取夹爪Io张开角度
-- **参数:** 无
-- **返回:** `(int)`夹爪Io张开角度
-
-### get_gripper_io_close_value()
-
-- **功能:** 获取夹爪Io闭合角度
-- **参数:** 无
-- **返回:** `(int)`获取夹爪Io闭合角度
-
-### get_gripper_queue_count()
-
-- **功能:** 获取夹爪当前队列的数据量
-- **参数:** 无
-- **返回:** `(int)`夹爪当前队列的数据量
-
-### get_gripper_vir_pos()
-
-- **功能:** 获取夹爪舵机虚位数值
-- **参数:** 无
-- **返回:** `(int)`夹爪舵机虚位数值
-  
-### get_gripper_protection_current()
-
-- **功能:** 获取夹爪夹持电流
-- **参数:** 无
-- **返回:** `(int)`夹爪夹持电流
-
-## 2 夹爪设置
-
-### set_gripper_Id(value)
-
-- **功能:** 设置夹爪ID号
-- **参数:** 
-  - `value`: `(int)` 夹爪ID，取值范围 `1-254`
-- **返回:**`(int)` 0-1
-  - `0`: 失败
-  - `1`: 成功
-
-### set_gripper_baud(value)
-
-- **功能:** 设置夹爪波特率
-- **参数:** 
-  - `value`: `(int)` 夹爪波特率，取值范围 `0-5`
-    - `0`: 115200
-    - `1`: 1000000
-    - `2`: 57600
-    - `3`: 19200
-    - `4`: 9600
-    - `5`: 4800
-- **返回:**`(int)` 0-1
-  - `0`: 失败
-  - `1`: 成功
-  
-### set_gripper_enable(value)
-
-- **功能:** 设置夹爪使能状态
-- **参数:** 
-  - `value`: `(int)` 使能状态，取值范围 `0-1`
-    - `0`: 掉使能
-    - `1`: 上使能
-- **返回:**`(int)` 0-1
-  - `0`: 失败
-  - `1`: 成功
-
-### set_gripper_value(value,speed)
-
-- **功能:** 设置夹爪以指定的速度转动到指定的位置
-- **参数:** 
-  - `value`: `(int)` 位置，取值范围 `0-100`
-  - `speed`: `(int)` 速度，取值范围 `1-100` 
-- **返回:**`(int)` 0-1
-  - `0`: 失败
-  - `1`: 成功
-
-### set_gripper_calibration()
-
-- **功能:** 设置夹爪零位校准
-- **参数:** 无
-- **返回:**`(int)` 0-1
-  - `0`: 失败
-  - `1`: 成功
-
-### set_gripper_P(value)
-
-- **功能:** 设置夹爪PID的P值
-- **参数:** 
-  - `value`: `(int)` P值，取值范围 `0-254`
-- **返回:**`(int)` 0-1
-  - `0`: 失败
-  - `1`: 成功
-
-### set_gripper_I(value)
-
-- **功能:** 设置夹爪PID的I值
-- **参数:** 
-  - `value`: `(int)` I值，取值范围 `0-254`
-- **返回:**`(int)` 0-1
-  - `0`: 失败
-  - `1`: 成功
-
-### set_gripper_D(value)
-
-- **功能:** 设置夹爪PID的D值
-- **参数:** 
-  - `value`: `(int)` D值，取值范围 `0-254`
-- **返回:**`(int)` 0-1
-  - `0`: 失败
-  - `1`: 成功
-
-### set_gripper_cw(value)
-
-- **功能:** 设置夹爪顺时针可运行误差
-- **参数:** 
-  - `value`: `(int)` 误差，取值范围 `0-16`
-- **返回:**`(int)` 0-1
-  - `0`: 失败
-  - `1`: 成功
-
-### set_gripper_cww(value)
-
-- **功能:** 设置夹爪逆时针可运行误差
-- **参数:** 
-  - `value`: `(int)` 误差，取值范围 `0-16`
-- **返回:**`(int)` 0-1
-  - `0`: 失败
-  - `1`: 成功
-
-### set_gripper_mini_pressure(value)
-
-- **功能:** 设置夹爪最小启动力
-- **参数:** 
-  - `value`: `(int)` 最小启动力，取值范围 `0-254`
-- **返回:**`(int)` 0-1
-  - `0`: 失败
-  - `1`: 成功
-
-### set_gripper_torque(value)
-
-- **功能:** 设置夹爪扭矩
-- **参数:** 
-  - `value`: `(int)` 扭矩，取值范围 `0-300`
-- **返回:**`(int)` 0-1
-  - `0`: 失败
-  - `1`: 成功
-
-### set_gripper_output(value)
-
-- **功能:** 设置夹爪IO
-- **参数:** 
-  - `value`: `(int)` 夹爪IO，取值范围 `0-3`
-    - `0`: out1 off,out2 off
-    - `1`: out1 on,out2 off
-    - `2`: out1 off,out2 on
-    - `3`: out1 on,out2 on
-    
-- **返回:**`(int)` 0-1
-  - `0`: 失败
-  - `1`: 成功
-
-### set_gripper_io_open_value(value)
-
-- **功能:** 设置夹爪Io张开位置
-- **参数:** 
-  - `value`: `(int)` 位置，取值范围 `0-100`
-- **返回:**`(int)` 0-1
-  - `0`: 失败
-  - `1`: 成功
-
-### set_gripper_io_close_value(value)
-
-- **功能:** 设置夹爪Io闭合位置
-- **参数:** 
-  - `value`: `(int)` 位置，取值范围 `0-100`
-- **返回:**`(int)` 0-1
-  - `0`: 失败
-  - `1`: 成功
-
-### set_gripper_speed(speed)
-
-- **功能:** 设置夹爪速度
-- **参数:** 
-  - `speed`: `(int)` 速度，取值范围 `1-100`
-- **返回:**`(int)` 0-1
-  - `0`: 失败
-  - `1`: 成功
-
-### set_abs_gripper_value(value,speed)
-
-- **功能:** 设置夹爪以指定的速度转动到指定的绝对位置
-- **参数:**
-  - `value`: `(int)` 位置，取值范围 `1-100` 
-  - `speed`: `(int)` 速度，取值范围 `1-100`
-- **返回:**`(int)` 0-1
-  - `0`: 失败
-  - `1`: 成功
-
-### set_gripper_vir_pos(value)
-
-- **功能:** 设置夹爪舵机虚位数值
-- **参数:** 
-  - `value`: `(int)` 虚位，取值范围 `0-100`
-- **返回:**`(int)` 0-1
-  - `0`: 失败
-  - `1`: 成功
-
-### set_gripper_protection_current(value)
-
-- **功能:** 设置夹爪夹持电流
-- **参数:** 
-  - `value`: `(int)` 虚位，取值范围 `1-254`
-- **返回:**`(int)` 0-1
-  - `0`: 失败
-  - `1`: 成功
-
-### set_gripper_pause()
-
-- **功能:** 设置夹爪暂停运动
-- **备注:** 只对set_abs_gripper_value()生效
-- **参数:** 无
-- **返回:**`(int)` 0-1
-  - `0`: 失败
-  - `1`: 成功
-
-### set_gripper_resume()
-
-- **功能:** 设置夹爪恢复运动
-- **备注:** 只对set_abs_gripper_value()生效
-- **参数:** 无
-- **返回:**`(int)` 0-1
-  - `0`: 失败
-  - `1`: 成功
-
-### set_gripper_stop()
-
-- **功能:** 设置夹爪停止运动，并清空消息队列
-- **备注:** 只对set_abs_gripper_value()生效
-- **参数:** 无
-- **返回:**`(int)` 0-1
-  - `0`: 失败
-  - `1`: 成功
-

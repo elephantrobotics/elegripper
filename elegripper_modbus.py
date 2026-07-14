@@ -143,17 +143,17 @@ class Gripper(Command):
                 self.ser.write(send_data)
                 self.ser.flush()
                 time.sleep(0.04)
-                recv_data = self.ser.read(7)
+                recv_data = self.ser.read(8)
                 # print(recv_data)
                 if not recv_data:
                     raise TimeoutError("Reading data timeout")
                 # print(recv_data.hex())
-                if len(recv_data) == 7:
-                    data = recv_data[0:5]
-                    crc_data = recv_data[5:]
+                if len(recv_data) == 8:
+                    data = recv_data[0:6]
+                    crc_data = recv_data[6:]
                     if self.__crc16_modbus(data) == crc_data:
                         response = data + crc_data
-                        result = int(response.hex()[6:10], 16)
+                        result = int(response.hex()[8:12], 16)
                         return result
                     else:
                         return -2
